@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=Unicode">
+    <title>Traffic Racer</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+  </head>
+  <body>
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width=960 height=600></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+    </div>
+    <script src="https://vk.com/js/api/xd_connection.js?2"  type="text/javascript"></script>
+    <script type="text/javascript">
+      VK.init(function ()
+      {
+        
+      });
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script>
+    </script>
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <script>
+    vkBridge.send('VKWebAppInit');
+    </script>
+    <script>
+      var controller = 0;
+      var gameInstance = null;
+      var first_name = "";
+      var last_name = "";
+      var userID = 0;
+      var UserData = "";
+      let FriendsIDs = [];
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+      var warningBanner = document.querySelector("#unity-warning");
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/TrafficRacerVK.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/TrafficRacerVK.data.unityweb",
+        frameworkUrl: buildUrl + "/TrafficRacerVK.framework.js.unityweb",
+        codeUrl: buildUrl + "/TrafficRacerVK.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "FrameStudio",
+        productName: "TrafficRacer",
+        productVersion: "1.0",
+      };
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) 
+      {
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta); 
+		canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+		controller = 1;
+      } 
+      else 
+      {
+		canvas.style.width = "960px";
+        canvas.style.height = "600px";      
+		controller = 0;
+      }
+
+      loadingBar.style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          progressBarFull.style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+	  gameInstance = unityInstance;
+          VK.api("users.get", {"v":"5.124"}, function (data) 
+          {
+            if(data.response)
+	    {
+              first_name = data["response"][0]["first_name"];
+              last_name = data["response"][0]["last_name"];
+              userID = data["response"][0]["id"];
+              UserData = first_name + "," + last_name + "," + userID;
+              unityInstance.SendMessage("VK","SetCurrentUser","" + UserData);
+            }
+          });
+	  VK.api('friends.get', {uid: userID, fields: 'first_name,last_name,uid'},function(data)
+	  {
+	    if(data.response)
+	    {
+		for(i=0; i < data.response.count; i++)
+		{
+		   var first_name_friend = data.response.items[i]["first_name"];
+		   var last_name_friend = data.response.items[i]["last_name"];
+		   var id_friend = data.response.items[i]["id"];
+		   FriendsIDs.push(id_friend);
+		   var FriendData = first_name_friend + "," + last_name_friend + "," + id_friend;
+		   unityInstance.SendMessage("VK","SetFriendUser","" + FriendData);	
+		}
+	    }
+	  });
+	  gameInstance.SendMessage("Controller","SetController",controller);
+          loadingBar.style.display = "none";
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
+	    
+	
+    function SendDistanceInLeaderBoard(distance)
+	{
+	  if(userID != 0 && isEmpty(first_name) == false && isEmpty(last_name) == false)
+	  {
+		  var dis = parseInt(distance);
+		  var url = 'https://script.google.com/macros/s/AKfycbzsH_StHIg8xrF7lCtDZg2notblO_oikYV4Dev8xA3R-ESfIH_pLkXlmC1deNw2-uuyRw/exec?p='+userID+','+first_name+','+last_name+','+dis;
+		  var x = new XMLHttpRequest();
+			  x.open("GET", url, true);
+			  x.onload = function ()
+		  {
+				
+			  }
+			  x.send(null);
+		  $.ajax
+			  ({
+			   url: 'https://api.vk.com/method/secure.sendNotification?access_token=1dfda0ff1dfda0ff1dfda0ff4f1d859c9011dfd1dfda0ff7d3aee45f55255f00a9c5b34&client_secret=WOYF6ZSh1RQPXcBSNmUy&user_ids='+ FriendsIDs +'&user_id='+ userID +'&%s&message=Твой друг установил новый рекорд! Заходи в игру, чтобы побить его!&v=5.71',
+			   method: 'GET',
+			   dataType: 'JSONP',
+			   success: function(data)
+			   {
+			  
+			   }
+			 });
+		  vkBridge.send("VKWebAppShowNativeAds", {ad_format:"interstitial"}).then(data => console.log(data.result)).catch(error => console.log(error));
+	  }
+	}
+	function GetLeaderBoard(typeData)
+	{
+	   switch(typeData)
+	   {
+		   case "All":
+		   var url = 'https://script.google.com/macros/s/AKfycbzsH_StHIg8xrF7lCtDZg2notblO_oikYV4Dev8xA3R-ESfIH_pLkXlmC1deNw2-uuyRw/exec?p=getData';
+	           var x = new XMLHttpRequest();
+                   x.open("GET", url, true);
+                   x.onload = function ()
+	           {
+			gameInstance.SendMessage("LeaderBoard","SetLeaderBoard","" + x.responseText);
+                   }
+                   x.send(null);	   
+		   break;
+		   case "Friends":
+		   var url = 'https://script.google.com/macros/s/AKfycbzsH_StHIg8xrF7lCtDZg2notblO_oikYV4Dev8xA3R-ESfIH_pLkXlmC1deNw2-uuyRw/exec?p=id,';
+		   for(var i = 0 ; i < FriendsIDs.length; i++)
+		   {
+			url += FriendsIDs[i] + ',';
+		   }
+	           url += userID + "";
+	           console.log(url);
+	           var x = new XMLHttpRequest();
+                   x.open("GET", url, true);
+                   x.onload = function ()
+	           {
+			gameInstance.SendMessage("LeaderBoard","SetLeaderBoard","" + x.responseText);
+                   }
+                   x.send(null);	   
+		   break;
+	   }
+	}
+	function Vibration()
+	{
+		navigator.vibrate = navigator.vibrate;
+    		if (navigator.vibrate) 
+		{
+    		}
+    		navigator.vibrate(1000);
+	}
+	function isEmpty(str) 
+	{
+		if (str.trim() == '') 
+			return true;
+    
+		return false;
+	}
+    </script>
+  </body>
+</html>
